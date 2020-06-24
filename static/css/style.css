@@ -1,0 +1,13 @@
+*{
+    margin:0;
+    padding:0;
+}
+.content{
+    display: flex;
+    flex-direction: column;
+    height:100%;
+}
+.border{
+    border:solid 3px lightgrey;
+    margin:10px;
+}

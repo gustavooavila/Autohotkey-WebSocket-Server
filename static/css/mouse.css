@@ -1,0 +1,15 @@
+.mouse{
+    display:flex;
+    flex-direction: column;
+    flex:1;
+}
+.mouse .mousePad{
+    flex:10;
+}
+.mouse .mouseBtns{
+    flex:2;
+    display:flex;
+}
+.mouse .mouseBtns .mouseBtn{
+    flex:6;
+}
