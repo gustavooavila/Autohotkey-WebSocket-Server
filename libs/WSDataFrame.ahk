@@ -1,3 +1,24 @@
+/*
+    this is where we hide the ugly code, Yeah it gets uglier...
+    acording to the Websocket RFC: http://tools.ietf.org/html/rfc6455
+    there's lots of bytes that we need to scrub before we can get the data from our data frames
+    data frames? you may ask, well yes, the packets we transfer in a websocket connection has frames
+    and those frames change format according to the ammount of data we need to send
+    we will check each kind in depth once I wrap my head around coding this... I'm kinda putting it aside for a while tbh
+    
+    references: 
+    http://tools.ietf.org/html/rfc6455
+    https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers
+    https://www.iana.org/assignments/websocket/websocket.xhtml
+    
+    implementation references:
+    Lua: https://github.com/lipp/lua-websockets/blob/master/src/websocket/frame.lua
+    Python: https://github.com/aaugustin/websockets/blob/main/src/websockets/frames.py
+    JS: https://github.com/websockets/ws/blob/master/lib/receiver.js
+    JS: https://github.com/websockets/ws/blob/master/lib/sender.js
+    
+*/
+
 class WSDataFrame{
      decode(ByRef data, bDataLength) {
         fin := NumGet(&data, "UChar")
@@ -26,10 +47,10 @@ class WSDataFrame{
             
             Loop %bDataLength% {
                 byte := NumGet(&data + A_Index - 1, "UChar")
-                if(A_Index > 2 && A_Index < 7 ){
+                if(A_Index > 2 && A_Index < 7 ) {
                     key.push(byte)
                 }else
-                if(A_Index > 6){
+                if(A_Index > 6) {
                     payload.push(byte)
                 }   
             }    
