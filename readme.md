@@ -5,7 +5,8 @@
 comes with a mousepad-esque app as example
 
 ## TODO:
-* allow bigger than 125 bytes messages on websocket (just need to implement the other frame       types/sizes)
+* allow bigger than 125 bytes messages on websocket (just need to implement the other frame types/sizes)
+* respond to WS disconnect and clear client references (garbage collection type of thing)
 * allow to run the websocket on the same port as the http server
 * clean the spaghetti
 * maybe some documentation ???

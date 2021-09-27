@@ -23,8 +23,6 @@ SocketManager.RegisterService(ws)
 
 SocketManager.StartServices()
 
-
-
 return
 
 WSmouse(data, client){
@@ -50,9 +48,9 @@ WSmouse(data, client){
 
 Esc::ExitApp
 
-#include %A_ScriptDir%\libs
+#include, %A_ScriptDir%\..\..\libs
+#include, JSON.ahk
+#include, CConsole.ahk
 #Include, SocketService.ahk
 #include, HTTP.ahk
 #include, WS.ahk
-#include, JSON.ahk
-#include, CConsole.ahk

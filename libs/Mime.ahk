@@ -1,7 +1,10 @@
 class MimeTypes
 {
     __New(){
-        this.LoadMimes(A_ScriptDir . "/libs/mime.types")
+        position := InStr(A_LineFile, "\", false, -1)
+        libfolder := SubStr(A_LineFile, 1, position)
+        this.LoadMimes(libfolder . "mime.types")
+        
     }
     LoadMimes(file) {
         if (!FileExist(file))

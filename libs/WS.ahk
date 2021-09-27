@@ -194,7 +194,7 @@ class WSserver {
                 if(this.isValidProtocol(protocol)){
                     ; create handshake response
                     response := handshake(request, response)
-                this.registerClient(client, protocol)
+                    this.registerClient(client, protocol)
                 }else{
                     response.status := "501 Not Implemented"
                 }
