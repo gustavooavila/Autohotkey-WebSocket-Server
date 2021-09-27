@@ -1,4 +1,5 @@
 #include Crypto.ahk
+#include WSDataFrame.ahk
 #include HTTP.ahk
 
 
@@ -31,70 +32,6 @@ class WSClient{
     __New(ByRef client, protocol) {
         this.client := client
         this.protocol := protocol
-    }
-    
-    decode(ByRef data, bDataLength) {
-        fin := NumGet(&data, "UChar")
-        
-        if(fin == 0x88){
-            return
-        }
-        
-        if(bDataLength > 125) {
-            return this.decodebig(data, bDataLength)
-            
-        }else
-        {
-            return this.decodesmall(data, bDataLength)
-        }
-    }
-    
-    decodesmall(ByRef data, bDataLength) {
-        fin := NumGet(&data, "UChar")
-        length := NumGet(&data + 1, "UChar")
-        
-        ; check if masked
-        if(length > 128) {
-            key := []
-            payload := []
-            
-            Loop %bDataLength% {
-                byte := NumGet(&data + A_Index - 1, "UChar")
-                if(A_Index > 2 && A_Index < 7 ){
-                    key.push(byte)
-                }else
-                if(A_Index > 6){
-                    payload.push(byte)
-                }   
-            }    
-        result := XOR(payload, key)
-        } else {
-            Loop %length%{
-                byte := NumGet(&data + 2 + A_Index - 1, "UChar")
-                result .= chr(byte)
-            }
-        }
-        
-        return result
-    }
-    
-    encode(message) {
-        length := strlen(message)
-        if(length < 125) {
-            byteArr := [129, length]
-            buf := new Buffer(length + 2)
-            Loop, Parse, message
-            byteArr.push(Asc(A_LoopField))
-            VarSetCapacity(result, byteArr.Length())
-            For, i, byte in byteArr
-            NumPut(byte, result, A_Index - 1, "UInt")
-            buf.Write(&result, length + 2)
-        }
-        return buf
-    }
-    
-    decodebig(ByRef data, bDataLength){
-        return data    
     }
     
     setData(data){
@@ -136,14 +73,14 @@ class WSserver {
         ; New Client or Old
         if(this.clients[client.socket]) {
             client := this.clients[client.socket]
-            decodedMessage := client.decode(bData, bDataLength)
+            decodedMessage := WSDataFrame.decode(bData, bDataLength)
             if(decodedMessage) {
                 protocol := this.protocols[client.protocol]
                 
                 response := protocol.Call(decodedMessage, client)
                 
                 if(response) {
-                    encodedMessage := client.encode(response)
+                    encodedMessage := WSDataFrame.encode(response)
                     client.setData(encodedMessage)
                     client.TrySend()
                 }
