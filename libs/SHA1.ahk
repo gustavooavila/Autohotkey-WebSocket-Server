@@ -44,7 +44,6 @@ bcrypt_sha1(string, encoding := "utf-8")
 			throw Exception("BCryptFinishHash: " NT_STATUS, -1)
 
 		loop % cbHash{
-            Console.log(Format("{:02x}", NumGet(pbHash, A_Index - 1, "uchar")))
 			hash .= Format("{:02x}", NumGet(pbHash, A_Index - 1, "uchar"))
         }
     }

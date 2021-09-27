@@ -2,39 +2,57 @@
 #SingleInstance, force
 SetBatchLines, -1
 
-
 global Console := new CConsole()
 Console.hotkey := "^+c"  ; to show the console
 Console.show()
 
-http := new HttpServer()
+SocketManager := new SocketServiceHandler()
+
+http := new HttpServer(8000)
 
 http.StaticFolder("static")
 http.StaticRoute("index.html")
-http.DinamicRoute("/mouseStatus",Func("MouseStatus"))
-ws := new WSserver(http)
 
-ws.addRoute("mouse",Func("WSmouse"))
 
-ws.setup()
+ws := new WSserver(8080)
+ws.addProtocol("mouse", Func("WSmouse"))
 
-http.Serve(8080)
+
+SocketManager.RegisterService(http)
+SocketManager.RegisterService(ws)
+
+SocketManager.StartServices()
+
+
 
 return
 
-MouseStatus(Byref req, Byref res){
-    Console.log(req.queries)
-    x := req.queries.x
-    y := req.queries.y
-    MouseMove, x, y, 50, R
-    res.status := 200
+WSmouse(data, client){
+    data := JSON.Load(data)
+    
+    x := data.x
+    y := data.y
+    btn := data.btn
+    
+    if(x != 0 or y != 0){
+        MouseMove x, y, 0, R
+    }
+    
+    if(data.btn == 1){
+        MouseClick left
+    }
+    if(data.btn == 2){
+        MouseClick right
+    }
+    
+    ;return data
 }
-WSmouse(){
-    return
-}
+
 Esc::ExitApp
 
 #include %A_ScriptDir%\libs
+#Include, SocketService.ahk
 #include, HTTP.ahk
 #include, WS.ahk
+#include, JSON.ahk
 #include, CConsole.ahk

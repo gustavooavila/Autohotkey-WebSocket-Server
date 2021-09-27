@@ -20,6 +20,7 @@ class Buffer
 
     WriteStr(str, encoding = "UTF-8") {
         length := this.GetStrSize(str, encoding)
+        
         VarSetCapacity(text, length)
         StrPut(str, &text, encoding)
 

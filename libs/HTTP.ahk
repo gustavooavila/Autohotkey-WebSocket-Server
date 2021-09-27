@@ -1,4 +1,3 @@
-#Include Socket.ahk
 #Include Buffer.ahk
 #Include URI.ahk
 #Include Mime.ahk
@@ -54,8 +53,9 @@ class HTTPRouter{
 
 class HttpServer
 {
-    __new(){
+    __new(socket){
         this.Router := new HTTPRouter()
+        this.socket := socket
     }
     
     static servers := {}
@@ -72,74 +72,48 @@ class HttpServer
         this.Router.DinamicRoute(path, func)
     }
     
-    Serve(port) {
-        this.port := port
-        HttpServer.servers[port] := this
-        AHKsock_Listen(port, "HttpHandler")
-    }
-}
-
-HttpHandler(sEvent, iSocket = 0, sName = 0, sAddr = 0, sPort = 0, ByRef bData = 0, bDataLength = 0) {
-    static sockets := {}
-    
-    if (!sockets[iSocket]) {
-        sockets[iSocket] := new Socket(iSocket)
-        AHKsock_SockOpt(iSocket, "SO_KEEPALIVE", true)
-    }
-    socket := sockets[iSocket]
-    
-    if (sEvent == "DISCONNECTED") {
-        socket.request := false
-    sockets[iSocket] := false
-    } else if (sEvent == "SEND") {
-        if (socket.TrySend()) {
-            socket.Close()
-        }
-    
-    } else if (sEvent == "RECEIVED") {
-        server := HttpServer.servers[sPort]
-        
+    handler(ByRef client, ByRef bData = 0, bDataLength = 0) {
         text := StrGet(&bData, "UTF-8")
         ; New request or old?
-        if (socket.request) {
+        if (client.request) {
             ; Get data and append it to the existing request body
-            socket.request.bytesLeft -= StrLen(text)
-            socket.request.body := socket.request.body . text
-        request := socket.request
+            client.request.bytesLeft -= StrLen(text)
+            client.request.body := client.request.body . text
+        request := client.request
         } else {
             ; Parse new request
             request := new HttpRequest(text)
             
             length := request.headers["Content-Length"]
             request.bytesLeft := length + 0
-            
-            Upgrade := request.headers["Upgrade"]
-            
+                        
             if (request.body) {
                 request.bytesLeft -= StrLen(request.body)
             }
         }
-        
         if (request.bytesLeft <= 0) {
         request.done := true
         } else {
-            socket.request := request
+            client.request := request
         }
         
         if (request.done || request.IsMultipart()) {
-            response := server.Router.Handle(request)
+            response := this.Router.Handle(request)
             if (response.status) {
-                socket.SetData(response.Generate())
+                console.log("new HTTP Request")
+                console.log("Route: ", request.path)
+                client.SetData(response.Generate())
             }
         }
-        if (socket.TrySend()) {
+        if (client.TrySend()) {
             if (!request.IsMultipart() || request.done) {
-                socket.Close()
+                client.Close()
             }
         }    
         
     }
 }
+
 class HttpRequest
 {
     __New(data = "") {
@@ -224,13 +198,12 @@ class HttpResponse
         FormatTime, date,, ddd, d MMM yyyy HH:mm:ss
         this.headers["Date"] := date
         headers := this.protocol . " " . this.status . "`r`n"
-        
         for key, value in this.headers {
             StringReplace,value,value,`n,,A
             StringReplace,value,value,`r,,A
             headers := headers . key . ": " . value . "`r`n"
         }
-                
+        
         headers := headers . "`r`n"
         length := this.headers["Content-Length"]
         buffer := new Buffer((StrLen(headers) * 2) + length)

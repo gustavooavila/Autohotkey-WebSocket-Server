@@ -1,75 +1,66 @@
-b64Encode(string)
-{
-    VarSetCapacity(bin, StrPut(string, "UTF-8")) && len := StrPut(string, &bin, "UTF-8") - 1 
-    Console.log(bin)
-    if !(DllCall("crypt32\CryptBinaryToString", "ptr", &bin, "uint", len, "uint", 0x1, "ptr", 0, "uint*", size))
-        throw Exception("CryptBinaryToString failed", -1)
-    VarSetCapacity(buf, size << 1, 0)
-    if !(DllCall("crypt32\CryptBinaryToString", "ptr", &bin, "uint", len, "uint", 0x1, "ptr", &buf, "uint*", size))
-        throw Exception("CryptBinaryToString failed", -1)
-    return StrGet(&buf)
-}
+;;taken from autohotkey.com/board/topic/117778-convert-hex-string-to-real-binary/#entry675902
+;HexStr2BinHex(hexString, byref var)
+;{
+;    sizeBytes := strlen(hexString)//2
+;    VarSetCapacity(var, sizeBytes)
+;    loop, % sizeBytes
+;    numput("0x" substr(hexString, A_Index * 2 - 1, 2), var, A_Index - 1, "UChar")
+;    return sizeBytes
+;}
+;
+;;original from autohotkey.com/board/topic/5545-base64-coderdecoder/?p=33960
+;HexBase64(string){
+;    size := HexStr2BinHex(string,value)
+;    Loop % size
+;    {
+;        curValue := NumGet(value, A_Index-1, "UChar")
+;        If Mod(A_Index,3) = 1{
+;            b64buffer := curValue << 16
+;        }
+;        Else If Mod(A_Index,3) = 2{
+;            b64buffer += curValue << 8
+;        }
+;        Else {
+;            b64buffer += curValue
+;            out := out . Code(b64buffer>>18) . Code(b64buffer>>12) . Code(b64buffer>>6) . Code(b64buffer)
+;        }
+;    }
+;    If Mod(StrLen(string),3) = 0
+;    Return out
+;    If Mod(StrLen(string),3) = 1
+;    Return out . Code(b64buffer>>18) . Code(b64buffer>>12) "=="
+;    Return out . Code(b64buffer>>18) . Code(b64buffer>>12) . Code(b64buffer>>6) "="
+;}
+
+;Code(i) {   ; <== Chars[i & 63], 0-base index
+;    Chars = ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
+;    StringMid i, Chars, (i&63)+1, 1
+;    return i
+;}
+
+;taken from autohotkey.com/board/topic/9974-include-a-bitmap-in-your-uncompiled-script/?p=63195
 StringCaseSense On
-Chars = ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
-B64Enc(string)
-{
-   Loop Parse, string
+
+HexBase64(hex) { ; StrLen(hex) must be even
+   Loop Parse, hex
    {
-     
-      If Mod(A_Index,3) = 1
-         buffer := Asc(A_LoopField) << 16
-      Else If Mod(A_Index,3) = 2
-         buffer += Asc(A_LoopField) << 8
+      m := Mod(A_Index,3)
+      x  = 0x%A_loopfield%
+      IfEqual      m,1, SetEnv z, % x << 8
+      Else IfEqual m,2, EnvAdd z, % x << 4
       Else {
-         buffer += Asc(A_LoopField)
-         out := out . Code(buffer>>18) . Code(buffer>>12) . Code(buffer>>6) . Code(buffer)
+         z += x
+         o := o Code(z>>6) code(z)
       }
    }
-   If Mod(StrLen(string),3) = 0
-      Return out
-   If Mod(StrLen(string),3) = 1
-      Return out . Code(buffer>>18) . Code(buffer>>12) "=="
-   Return out . Code(buffer>>18) . Code(buffer>>12) . Code(buffer>>6) "="
+   IfEqual m,2, Return o Code(z>>6) Code(z) "=="
+   IfEqual m,1, Return o Code(z>>6) "="
+   Return o
 }
 
-Code(i)     ; <== Chars[i & 63], 0-base index
-{
-   Global Chars
+
+Code(i) {   ; <== Chars[i & 63], 0-base index
+   Chars = ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
    StringMid i, Chars, (i&63)+1, 1
    Return i
-}
-
-
-
-Base64Encode(String)
-{
-    static CharSet := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-    VarSetCapacity(Output,Ceil(Length / 3) << 2)
-    Index := 1, Length := StrLen(String)
-    Loop, % Length // 3
-    {
-        Value := Asc(SubStr(String,Index,1)) << 16
-            | Asc(SubStr(String,Index + 1,1)) << 8
-            | Asc(SubStr(String,Index + 2,1))
-        Index += 3
-        Output .= SubStr(CharSet,(Value >> 18) + 1,1)
-            . SubStr(CharSet,((Value >> 12) & 63) + 1,1)
-            . SubStr(CharSet,((Value >> 6) & 63) + 1,1)
-            . SubStr(CharSet,(Value & 63) + 1,1)
-    }
-    Length := Mod(Length,3)
-    If Length = 0 ;no characters remaining
-        Return, Output
-    Value := Asc(SubStr(String,Index,1)) << 10
-    If Length = 1
-    {
-        Return, Output ;one character remaining
-            . SubStr(CharSet,(Value >> 12) + 1,1)
-            . SubStr(CharSet,((Value >> 6) & 63) + 1,1) . "=="
-    }
-    Value |= Asc(SubStr(String,Index + 1,1)) << 2 ;insert the third character
-    Return, Output ;two characters remaining
-        . SubStr(CharSet,(Value >> 12) + 1,1)
-        . SubStr(CharSet,((Value >> 6) & 63) + 1,1)
-        . SubStr(CharSet,(Value & 63) + 1,1) . "="
 }
