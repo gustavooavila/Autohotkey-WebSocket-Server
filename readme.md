@@ -8,6 +8,7 @@ comes with a mousepad-esque app as example
 * allow bigger than 125 bytes messages on websocket (just need to implement the other frame       types/sizes)
 * allow to run the websocket on the same port as the http server
 * clean the spaghetti
+* maybe some documentation ???
 
 ## Thanks to:
 * GeekDude: for the amazing [cJson.ahk](https://github.com/G33kDude/cJson.ahk)
