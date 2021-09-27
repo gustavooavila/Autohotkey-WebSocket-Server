@@ -1,17 +1,6 @@
-#include Base64.ahk
-#include SHA1.ahk
+#include Crypto.ahk
 #include HTTP.ahk
 
-xorcipher(byteArr, keyArr)
-{
-    keylen := keyArr.length()
-    for i, byte in byteArr{
-        key :=  keyArr[mod(A_Index - 1, keylen) + 1]
-        decodedByte := byte ^ key
-        out .= decodedByte ? chr(decodedByte) : chr(key)
-    }
-    return out
-}
 
 handshake(ByRef req, ByRef res){
     clientKey := req.headers["Sec-WebSocket-Key"]
@@ -29,16 +18,16 @@ handshake(ByRef req, ByRef res){
 
 sec_websocket_accept(key){
     key := key . "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" ; Chosen by fair dice roll. Guaranteed to be random.
-    sha1 := bcrypt_sha1(key)
+    sha1 := sha1_encode(key)
     pbHash := sha1[1]
     cbHash := sha1[2]
-    b64 := Base64.Encode(&pbHash, cbHash)
+    b64 := Base64_encode(&pbHash, cbHash)
     return b64
 }
 
 class WSClient{
-    ; needs a function to send data
-    ; needs way to decode the data frames
+    ; needs a function to send bigger data
+    ; needs way to decode bigger data frames
     __New(ByRef client, protocol) {
         this.client := client
         this.protocol := protocol
@@ -78,7 +67,7 @@ class WSClient{
                     payload.push(byte)
                 }   
             }    
-        result := xorcipher(payload, key)
+        result := XOR(payload, key)
         } else {
             Loop %length%{
                 byte := NumGet(&data + 2 + A_Index - 1, "UChar")
