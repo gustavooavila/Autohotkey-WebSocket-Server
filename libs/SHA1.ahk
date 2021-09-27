@@ -43,9 +43,6 @@ bcrypt_sha1(string, encoding := "utf-8")
 		if (NT_STATUS := DllCall("bcrypt\BCryptFinishHash", "ptr", hHash, "ptr", &pbHash, "uint", cbHash, "uint", 0) != 0)
 			throw Exception("BCryptFinishHash: " NT_STATUS, -1)
 
-		loop % cbHash{
-			hash .= Format("{:02x}", NumGet(pbHash, A_Index - 1, "uchar"))
-        }
     }
 	catch exception
 	{
@@ -59,8 +56,8 @@ bcrypt_sha1(string, encoding := "utf-8")
 			VarSetCapacity(pbInput, 0)
 		if (hHash)
 			DllCall("bcrypt\BCryptDestroyHash", "ptr", hHash)
-		if (pbHash)
-			VarSetCapacity(pbHash, 0)
+		;if (pbHash)
+		;	VarSetCapacity(pbHash, 0)
 		if (pbHashObject)
 			VarSetCapacity(pbHashObject, 0)
 		if (hAlg)
@@ -69,5 +66,5 @@ bcrypt_sha1(string, encoding := "utf-8")
 			DllCall("FreeLibrary", "ptr", hBCRYPT)
 	}
 
-	return hash
+	return [pbHash, cbHash]
 }

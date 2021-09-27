@@ -28,9 +28,11 @@ handshake(ByRef req, ByRef res){
 }
 
 sec_websocket_accept(key){
-    key := key . "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+    key := key . "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" ; Chosen by fair dice roll. Guaranteed to be random.
     sha1 := bcrypt_sha1(key)
-    b64 := HexBase64(sha1)
+    pbHash := sha1[1]
+    cbHash := sha1[2]
+    b64 := Base64.Encode(&pbHash, cbHash)
     return b64
 }
 
@@ -119,7 +121,7 @@ class WSserver {
     __new(socket){
         this.clients := []
         this.socket := socket        
-        this.protocols := []
+        this.protocols := []        
     }
     
     registerClient(ByRef client, protocol := "default"){
@@ -194,7 +196,7 @@ class WSserver {
                 if(this.isValidProtocol(protocol)){
                     ; create handshake response
                     response := handshake(request, response)
-                    this.registerClient(client, protocol)
+                this.registerClient(client, protocol)
                 }else{
                     response.status := "501 Not Implemented"
                 }
