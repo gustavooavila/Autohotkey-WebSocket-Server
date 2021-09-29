@@ -89,6 +89,7 @@ class WSDataFrame{
         length := 0
         
         payload := []
+        resultArr := []
         
         if(size == "big") {
             length := Uint16(byte3, byte4)
@@ -105,18 +106,25 @@ class WSDataFrame{
                     byte := NumGet(&data + 6 + A_Index - 1, "UChar")
                     payload.push(byte)
                 }
-                
-                result := XOR(payload, key)
+                resultArr := XOR(payload, key)
             
             }else{
                 Loop %length%{
                     byte := NumGet(&data + 2 + A_Index - 1, "UChar")
-                    result .= chr(byte)
+                    resultArr.push(byte)
                 }
             }
-            return result
-            
         }
+        
+        if(opcode & 0x01) {
+            result := ""
+            For i, byte in resultArr{
+                result .= chr(byte)
+            }
+            return result
+        }
+        
+        return resultArr
     }
     
     getKey(ByRef data, index := 2){

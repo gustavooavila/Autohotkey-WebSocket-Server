@@ -95,10 +95,11 @@ Base64_encode(pData, Size) {
 XOR(byteArr, keyArr)
 {
     keylen := keyArr.length()
+    decodedArr := []
     for i, byte in byteArr{
         key :=  keyArr[mod(A_Index - 1, keylen) + 1]
         decodedByte := byte ^ key
-        out .= decodedByte ? chr(decodedByte) : chr(key)
+        decodedArr.push(decodedByte)
     }
-    return out
+    return decodedArr
 }
