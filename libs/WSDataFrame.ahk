@@ -1,10 +1,43 @@
 /*
     this is where we hide the ugly code, Yeah it gets uglier...
     acording to the Websocket RFC: http://tools.ietf.org/html/rfc6455
-    there's lots of bytes that we need to scrub before we can get the data from our data frames
-    data frames? you may ask, well yes, the packets we transfer in a websocket connection has frames
-    and those frames change format according to the ammount of data we need to send
-    we will check each kind in depth once I wrap my head around coding this... I'm kinda putting it aside for a while tbh
+    there's lots of bytes that we need to scrub before we can get the message data
+    according to ammount of data the message may be split in multiple data frames
+    as well as change the format of the data frame
+    
+    
+    Frame format:
+    0               1               2               3               4    bytes
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-------+-+-------------+-------------------------------+
+    |F|R|R|R| opcode|M| Payload len |    Extended payload length    |
+    |I|S|S|S|  (4)  |A|     (7)     |             (16/64)           |
+    |N|V|V|V|       |S|             |   (if payload len==126/127)   |
+    | |1|2|3|       |K|             |                               |
+    +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
+    |     Extended payload length continued, if payload len == 127  |
+    + - - - - - - - - - - - - - - - +-------------------------------+
+    |                               |Masking-key, if MASK set to 1  |
+    +-------------------------------+-------------------------------+
+    | Masking-key (continued)       |          Payload Data         |
+    +-------------------------------- - - - - - - - - - - - - - - - +
+    :                     Payload Data continued ...                :
+    + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
+    |                     Payload Data continued ...                |
+    +---------------------------------------------------------------+
+    
+    OpCodes: 
+    0x8 Close
+    0x9 Ping
+    0xA Pong
+    
+    Payload data OpCodes:
+    0x0 Continuation
+    0x1 Text
+    0x2 Binary
+    
+    
     
     references: 
     http://tools.ietf.org/html/rfc6455
@@ -17,44 +50,77 @@
     JS: https://github.com/websockets/ws/blob/master/lib/receiver.js
     JS: https://github.com/websockets/ws/blob/master/lib/sender.js
     
+    
 */
+Uint16(a, b){
+    return a * 256 + b
+}
+
+Uint16SplitUint8(c){
+    a := Mod(c, 256)
+    b := c - a
+    return [a, b]
+}
+
+class WSFrameHeader {
+    __new(ByRef data, bDataLength){
+        byte1 := NumGet(&data, "UChar")
+        byte2 := NumGet(&data + 1, "UChar")
+        
+        this.big := bDataLength > 125
+        
+        this.fin  := byte1 & 0x80 ? True : False ; indicates the end of the message
+        
+        this.rsv1 := byte1 & 0x40 ? True : False
+        this.rsv2 := byte1 & 0x20 ? True : False
+        this.rsv3 := byte1 & 0x10 ? True : False
+        
+        this.opcode := byte1 & 0x0F
+        
+        this.mask := byte2 & 0x80 ? True : False ; indicates if the content is masked(XOR)
+        
+        this.key := []
+        this.length := 0
+        
+        if(this.big) {
+        this.length := Uint16(NumGet(&data + 2, "UChar"), NumGet(&data + 3, "UChar"))
+        } else {
+            this.length := byte2 & 0x7F    
+            if(this.mask){
+                this.key[1] := NumGet(&data + 2, "UChar")
+                this.key[2] := NumGet(&data + 3, "UChar")
+                this.key[3] := NumGet(&data + 4, "UChar")
+                this.key[4] := NumGet(&data + 5, "UChar")
+            }
+        }
+    }
+}
 
 class WSDataFrame{
-     decode(ByRef data, bDataLength) {
-        fin := NumGet(&data, "UChar")
-        
-        if(fin == 0x88){
-            return
-        }
+    decode(ByRef data, bDataLength) {
+        header := new WSFrameHeader(data, bDataLength)
+        console.log(header)
         
         if(bDataLength > 125) {
-            return WSDataFrame.decodebig(data, bDataLength)
+            return WSDataFrame.decodebig(data, bDataLength, header)
             
         }else
         {
-            return WSDataFrame.decodesmall(data, bDataLength)
+            return WSDataFrame.decodesmall(data, bDataLength, header)
         }
     }
     
-    decodesmall(ByRef data, bDataLength) {
-        fin := NumGet(&data, "UChar")
-        length := NumGet(&data + 1, "UChar")
+    decodesmall(ByRef data, bDataLength, header) {
+        length := header.length
         
-        ; check if masked
-        if(length > 128) {
-            key := []
+        if(header.mask) {
             payload := []
             
-            Loop %bDataLength% {
-                byte := NumGet(&data + A_Index - 1, "UChar")
-                if(A_Index > 2 && A_Index < 7 ) {
-                    key.push(byte)
-                }else
-                if(A_Index > 6) {
-                    payload.push(byte)
-                }   
-            }    
-        result := XOR(payload, key)
+            Loop %length% {
+                byte := NumGet(&data + 6 + A_Index - 1, "UChar")
+                payload.push(byte)
+            }
+        result := XOR(payload, header.key)
         } else {
             Loop %length%{
                 byte := NumGet(&data + 2 + A_Index - 1, "UChar")
@@ -63,6 +129,10 @@ class WSDataFrame{
         }
         
         return result
+    }
+    
+    decodebig(ByRef data, bDataLength, header){
+        return data
     }
     
     encode(message) {
@@ -80,7 +150,4 @@ class WSDataFrame{
         return buf
     }
     
-    decodebig(ByRef data, bDataLength){
-        return data    
-    }
 }
