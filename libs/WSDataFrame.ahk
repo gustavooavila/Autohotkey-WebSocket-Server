@@ -62,77 +62,70 @@ Uint16SplitUint8(c){
     return [a, b]
 }
 
-class WSFrameHeader {
-    __new(ByRef data, bDataLength){
-        byte1 := NumGet(&data, "UChar")
+class WSDataFrame{
+    
+    ; somehow I need to sift through the messages received to get the error and close messages... 
+    ; and let only data messages reach the custom callback function
+    
+    decode(ByRef data, bDataLength){
+        byte1 := NumGet(&data + 0, "UChar")
         byte2 := NumGet(&data + 1, "UChar")
         
-        this.big := bDataLength > 125
+        byte3 := NumGet(&data + 2, "UChar")
+        byte4 := NumGet(&data + 3, "UChar")
         
-        this.fin  := byte1 & 0x80 ? True : False ; indicates the end of the message
+        size := bDataLength > 125 ? bDataLength == 127 ? "medium" : "big" : "small"
         
-        this.rsv1 := byte1 & 0x40 ? True : False
-        this.rsv2 := byte1 & 0x20 ? True : False
-        this.rsv3 := byte1 & 0x10 ? True : False
+        fin  := byte1 & 0x80 ? True : False ; indicates the end of the message
         
-        this.opcode := byte1 & 0x0F
+        rsv1 := byte1 & 0x40 ? True : False
+        rsv2 := byte1 & 0x20 ? True : False
+        rsv3 := byte1 & 0x10 ? True : False
         
-        this.mask := byte2 & 0x80 ? True : False ; indicates if the content is masked(XOR)
+        opcode := byte1 & 0x0F
         
-        this.key := []
-        this.length := 0
+        mask := byte2 & 0x80 ? True : False ; indicates if the content is masked(XOR)
         
-        if(this.big) {
-        this.length := Uint16(NumGet(&data + 2, "UChar"), NumGet(&data + 3, "UChar"))
-        } else {
-            this.length := byte2 & 0x7F    
-            if(this.mask){
-                this.key[1] := NumGet(&data + 2, "UChar")
-                this.key[2] := NumGet(&data + 3, "UChar")
-                this.key[3] := NumGet(&data + 4, "UChar")
-                this.key[4] := NumGet(&data + 5, "UChar")
+        length := 0
+        
+        payload := []
+        
+        if(size == "big") {
+            length := Uint16(byte3, byte4)
+            if(mask) {
+                key := WSDataFrame.getKey(data, 3)
             }
-        }
-    }
-}
-
-class WSDataFrame{
-    decode(ByRef data, bDataLength) {
-        header := new WSFrameHeader(data, bDataLength)
-        console.log(header)
         
-        if(bDataLength > 125) {
-            return WSDataFrame.decodebig(data, bDataLength, header)
+        } else if(size == "small") {
+            length := byte2 & 0x7F
+            if(mask){
+                key := WSDataFrame.getKey(data)
+                
+                Loop %length% {
+                    byte := NumGet(&data + 6 + A_Index - 1, "UChar")
+                    payload.push(byte)
+                }
+                
+                result := XOR(payload, key)
             
-        }else
-        {
-            return WSDataFrame.decodesmall(data, bDataLength, header)
+            }else{
+                Loop %length%{
+                    byte := NumGet(&data + 2 + A_Index - 1, "UChar")
+                    result .= chr(byte)
+                }
+            }
+            return result
+            
         }
     }
     
-    decodesmall(ByRef data, bDataLength, header) {
-        length := header.length
-        
-        if(header.mask) {
-            payload := []
-            
-            Loop %length% {
-                byte := NumGet(&data + 6 + A_Index - 1, "UChar")
-                payload.push(byte)
-            }
-        result := XOR(payload, header.key)
-        } else {
-            Loop %length%{
-                byte := NumGet(&data + 2 + A_Index - 1, "UChar")
-                result .= chr(byte)
-            }
-        }
-        
-        return result
-    }
-    
-    decodebig(ByRef data, bDataLength, header){
-        return data
+    getKey(ByRef data, index := 2){
+        key := []
+        key[1] := NumGet(&data + (index + 0), "UChar")
+        key[2] := NumGet(&data + (index + 1), "UChar")
+        key[3] := NumGet(&data + (index + 2), "UChar")
+        key[4] := NumGet(&data + (index + 3), "UChar")
+        return key
     }
     
     encode(message) {
