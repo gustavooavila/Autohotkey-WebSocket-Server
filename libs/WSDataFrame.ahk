@@ -54,6 +54,8 @@
     1 - there's no way to read binary in AHK, only bytes at a time (so there's lots of AND masking going on)
     2 - arrays start at 1
 */
+
+OpCodes := {CONTINUATION:0x0,TEXT:0x1,BINARY:0x2,CLOSE:0x8,PING:0x9,PONG:0xA}
 Uint16(a, b){
     return a * 256 + b
 }
@@ -169,7 +171,7 @@ class WSRequest{
     }
 }
 class WSResponse{
-    __new(){
+    __new(opcode){
         
     }
     
