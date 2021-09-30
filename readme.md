@@ -4,6 +4,8 @@
 100% Autohotkey implementation of Websocket and HTTP server
 comes with a mousepad-esque app as example
 
+This is in a highly experimental phase, here be dragons.
+
 ## TODO:
 * allow bigger than 125 bytes messages on websocket (just need to implement the other frame types/sizes)
 * add responses for errors and disconnects

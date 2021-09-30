@@ -73,10 +73,17 @@ class WSserver {
         ; New Client or Old
         if(this.clients[client.socket]) {
             client := this.clients[client.socket]
-            decodedMessage := WSDataFrame.decode(bData, bDataLength)
-            if(decodedMessage) {
+            
+            if(client.multiFrameMessage){
+                client.multiFrameMessage.decode(bData, bDataLength)
+                request := client.multiFrameMessage
+            } else {
+                request := new WSRequest(bData, bDataLength)
+            }
+            if(request.fin) {
                 protocol := this.protocols[client.protocol]
                 
+                decodedMessage := request.getMessage()
                 response := protocol.Call(decodedMessage, client)
                 
                 if(response) {
@@ -85,6 +92,8 @@ class WSserver {
                     client.TrySend()
                 }
                 
+            }else{
+                client.multiFrameMessage := request
             }
             return
         }
