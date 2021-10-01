@@ -58,13 +58,13 @@
 OpCodes := {CONTINUATION:0x0,TEXT:0x1,BINARY:0x2,CLOSE:0x8,PING:0x9,PONG:0xA}
 
 /*
- MDN says: 
+    MDN says: 
     "
     1. Read bits 9-15 (inclusive) and interpret that as an unsigned integer. If it's 125 or less, then that's the length; you're done. If it's 126, go to step 2. If it's 127, go to step 3.
     2. Read the next 16 bits and interpret those as an unsigned integer. You're done.
     3. Read the next 64 bits and interpret those as an unsigned integer. (The most significant bit must be 0.) You're done.
-                                                                                                                          "
- So unfortunatelly using NumGet UShort and UInt64 doesn't work...
+    "
+    So unfortunatelly using NumGet UShort and UInt64 doesn't work...
 */
 Uint16(a, b) {
     return a << 8 | b
@@ -191,8 +191,50 @@ class WSRequest{
     }
 }
 class WSResponse{
-    __new(opcode){
-        
+    __new(message := "", opcode := 0x01, length := 0, fin := True){
+        this.message := message
+        this.opcode := opcode
+        this.fin := fin
+        if(message) {
+            if(opcode := 0x01)
+        this.length := strlen(message)
+        } else {
+            this.length := length
+        }
     }
     
-}    
+    encode() {
+        if(this.opcode := 0x01) {
+            this.length := strlen(this.message)
+        }
+        
+        byte1 := (this.fin? 0x80 : 0x00) | this.opcode
+        
+        if(this.length < 126) {
+            byteArr := [byte1, this.length]
+            
+        } else if(this.length <= 65535) {
+            lengthBytes := Uint16ToUChar(this.length)
+            byteArr := [byte1, 0x7E, lengthBytes[1], lengthBytes[2]]
+        
+        } else if(this.length < 2 ^ 53) {
+            lengthBytes := Uint64ToUChar(this.length)
+            byteArr := [byte1, 0x7F, lengthBytes[1], lengthBytes[2], lengthBytes[3], lengthBytes[4]]
+            
+        }
+        
+        length := this.length + byteArr.Length()
+        buf := new Buffer(length)
+        
+        message := this.message
+        Loop, Parse, message 
+        byteArr.push(Asc(A_LoopField))
+        VarSetCapacity(result, length)
+        For, i, byte in byteArr {
+            NumPut(byte, result, A_Index - 1, "UInt")
+        }
+        buf.Write(&result, length)
+        return buf
+    }
+    
+}
