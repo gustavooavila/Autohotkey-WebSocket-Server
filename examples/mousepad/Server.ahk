@@ -25,8 +25,8 @@ SocketManager.StartServices()
 
 return
 
-WSmouse(data, client){
-    data := JSON.Load(data)
+WSmouse(ByRef Request, ByRef Response, ByRef client){
+    data := JSON.Load(Request.getMessage())
     
     x := data.x
     y := data.y

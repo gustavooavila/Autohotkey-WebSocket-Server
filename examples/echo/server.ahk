@@ -22,8 +22,8 @@ SocketManager.StartServices()
 
 return
 
-WSecho(data, client){
-    return data
+WSecho(ByRef Request, ByRef Response, ByRef client){
+    Response.message := Request.getMessage()
 }
 
 Esc::ExitApp
