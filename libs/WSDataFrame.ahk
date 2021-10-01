@@ -56,18 +56,38 @@
 */
 
 OpCodes := {CONTINUATION:0x0,TEXT:0x1,BINARY:0x2,CLOSE:0x8,PING:0x9,PONG:0xA}
-Uint16(a, b){
-    return a * 256 + b
-}
 
-Uint16SplitUint8(c){
-    a := Mod(c, 256)
-    b := c - a
+/*
+ MDN says: 
+    "
+    1. Read bits 9-15 (inclusive) and interpret that as an unsigned integer. If it's 125 or less, then that's the length; you're done. If it's 126, go to step 2. If it's 127, go to step 3.
+    2. Read the next 16 bits and interpret those as an unsigned integer. You're done.
+    3. Read the next 64 bits and interpret those as an unsigned integer. (The most significant bit must be 0.) You're done.
+                                                                                                                          "
+ So unfortunatelly using NumGet UShort and UInt64 doesn't work...
+*/
+Uint16(a, b) {
+    return a << 8 | b
+}
+Uint64(a, b, c, d) {
+    return a << 24 | b << 16 | c << 8 | d    
+}
+Uint16ToUChar(c) {
+    a := c >> 8
+    b := c & 0xFF
     return [a, b]
 }
+
+Uint64ToUChar(e) {
+    a := e >> 24
+    b := e >> 16
+    c := e >> 8
+    d := c & 0xFF
+    return [a, b, c, d]
+}
+
 class WSDataFrame{
     encode(message) {
-        console.log(message)
         length := strlen(message)
         if(length < 125) {
             byteArr := [129, length]
@@ -126,7 +146,7 @@ class WSRequest{
             }
         
         } else if(this.length == 0x7F) {
-            this.length := Uint16(UInt16(byte3, byte4), UInt16(byte5, byte6))
+            this.length := Uint64(byte3, byte4, byte5, byte6)
             if(this.mask){
                 this.key := this.getKey(data, 6)
             }
