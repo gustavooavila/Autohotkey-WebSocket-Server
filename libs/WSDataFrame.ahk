@@ -133,7 +133,13 @@ class WSRequest{
         if(this.opcode & 0x01) {
         this.datatype := "text"
         }else if(this.opcode & 0x02) {
-            this.datatype := "binary"
+        this.datatype := "binary"
+        }else if(this.opcode & 0x8){
+        this.datatype := "close"
+        }else if(this.opcode & 0x9){
+        this.datatype := "ping"
+        }else if(this.opcode & 0xA){
+            this.datatype := "pong"
         }
         
         this.mask := byte2 & 0x80 ? True : False ; indicates if the content is masked(XOR)
@@ -178,20 +184,18 @@ class WSRequest{
     }
     
     getMessage() {
-        if(this.datatype == "text") {
+        if(this.datatype == "text"  || this.datatype == "ping") {
             message := ""
             For _, byte in this.payload{
                 message .= chr(byte)
             }
             return message
-        
-        }else if(this.datatype == "binary") {
-            return this.payload
         }
+        return this.payload
     }
 }
 class WSResponse{
-    __new(message := "", opcode := 0x01, length := 0, fin := True){
+    __new(opcode := 0x01, message := "", length := 0, fin := True){
         this.message := message
         this.opcode := opcode
         this.fin := fin
@@ -212,7 +216,7 @@ class WSResponse{
         
         if(this.length < 126) {
             byteArr := [byte1, this.length]
-            
+        
         } else if(this.length <= 65535) {
             lengthBytes := Uint16ToUChar(this.length)
             byteArr := [byte1, 0x7E, lengthBytes[1], lengthBytes[2]]
@@ -227,14 +231,14 @@ class WSResponse{
         buf := new Buffer(length)
         
         message := this.message
-        Loop, Parse, message 
-        byteArr.push(Asc(A_LoopField))
-        VarSetCapacity(result, length)
-        For, i, byte in byteArr {
-            NumPut(byte, result, A_Index - 1, "UInt")
-        }
-        buf.Write(&result, length)
-        return buf
+    Loop, Parse, message 
+    byteArr.push(Asc(A_LoopField))
+    VarSetCapacity(result, length)
+    For, i, byte in byteArr {
+        NumPut(byte, result, A_Index - 1, "UInt")
+    }
+    buf.Write(&result, length)
+    return buf
     }
     
 }
