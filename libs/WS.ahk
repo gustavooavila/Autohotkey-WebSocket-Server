@@ -75,25 +75,20 @@ class WSserver {
             client := this.clients[client.socket]
             if(client.multiFrameMessage) {
                 client.multiFrameMessage.decode(bData, bDataLength)
-                request := client.multiFrameMessage
+            request := client.multiFrameMessage
             } else {
                 request := new WSRequest(bData, bDataLength)
             }
             if(request.fin) {
-                protocol := this.protocols[client.protocol]
-                
+                protocol := this.protocols[client.protocol]                
                 response := new WSResponse()
                 
-                decodedMessage := request.getMessage()
-                responseMsg := protocol.Call(decodedMessage, client)
-                response.message := responseMsg
+                protocol.Call(request, response, client)
                 
-                if(response) {
-                    encodedMessage := response.encode()
-                    client.setData(encodedMessage)
-                    client.TrySend()
-                }
-                
+                encodedMessage := response.encode()
+                client.setData(encodedMessage)
+                client.TrySend()
+            
             }else{
                 client.multiFrameMessage := request
             }
