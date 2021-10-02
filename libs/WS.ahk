@@ -67,8 +67,6 @@ class WSserver {
             }
             
             if(request.datatype == "close") {
-                ; the protocol for closing must be wrong,
-                ; the onclose event is not firing in the client
                 if(request.length){
                     closeCode := request.getMessage()
                 response := new WSResponse(0x8, closeCode, request.length)
@@ -92,7 +90,12 @@ class WSserver {
             }
             if(response){
                 client.setData(response.encode())
-                client.TrySend()
+                if (client.TrySend()) {
+                    if(request.datatype == "close") {
+                        client.Close()
+                    }
+                }
+                
             }
             return
         }
