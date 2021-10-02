@@ -52,54 +52,49 @@ class WSserver {
     broadcast(data, protocol := "") {
         return 
     }
-    
-    handler(ByRef client, ByRef bData = 0, bDataLength = 0) {
-        ; New Client or Old
-        if(client.WSprotocol) {
-            response := False
-            
-            if(client.multiFrameMessage) {
-                client.multiFrameMessage.decode(bData, bDataLength)
-                request := client.multiFrameMessage
-            
-            } else {
-                request := new WSRequest(bData, bDataLength)
-            }
-            
-            if(request.datatype == "close") {
-                if(request.length){
-                    closeCode := request.getMessage()
-                response := new WSResponse(0x8, closeCode, request.length)
-                }else{
-                    response := new WSResponse(0x8)
-                }
-            
-            } else if(request.datatype == "ping") {
-                ; don't know how to test this :/
-                response := new WSResponse(0xA, request.getMessage(), request.length)
-            
-            }else {
-                if(request.fin) {
-                    protocol := this.protocols[client.WSprotocol]                
-                    response := new WSResponse()
-                    protocol.Call(request, response, client)
-                
-                } else {
-                    client.multiFrameMessage := request
-                }
-            }
-            if(response){
-                client.setData(response.encode())
-                if (client.TrySend()) {
-                    if(request.datatype == "close") {
-                        client.Close()
-                    }
-                }
-                
-            }
-            return
+    handleWS(ByRef client, ByRef bData = 0, bDataLength = 0){
+        response := False
+        
+        if(client.multiFrameMessage) {
+            client.multiFrameMessage.decode(bData, bDataLength)
+            request := client.multiFrameMessage
+        
+        } else {
+            request := new WSRequest(bData, bDataLength)
         }
         
+        if(request.datatype == "close") {
+            if(request.length){
+                closeCode := request.getMessage()
+            response := new WSResponse(0x8, closeCode, request.length)
+            }else{
+                response := new WSResponse(0x8)
+            }
+        
+        } else if(request.datatype == "ping") {
+            ; don't know how to test this :/
+            response := new WSResponse(0xA, request.getMessage(), request.length)
+        
+        }else {
+            if(request.fin) {
+                protocol := this.protocols[client.WSprotocol]                
+                response := new WSResponse()
+                protocol.Call(request, response, client)
+            
+            } else {
+                client.multiFrameMessage := request
+            }
+        }
+        if(response){
+            client.setData(response.encode())
+            if (client.TrySend()) {
+                if(request.datatype == "close") {
+                    client.Close()
+                }
+            }
+        }
+    }
+    handleHTTP(ByRef client, ByRef bData = 0, bDataLength = 0){      
         text := StrGet(&bData, "UTF-8")
         
         ; New request or old?
@@ -156,6 +151,15 @@ class WSserver {
                 client.Close()
             }
         }
-        
+    }
+    handler(ByRef client, ByRef bData = 0, bDataLength = 0) {
+        ; New Client or Old
+        if(client.WSprotocol)
+        {
+            this.handleWS( client, bData, bDataLength)
+        }
+        else{
+            this.handleHTTP( client, bData, bDataLength)
+        }
     }
 }        
