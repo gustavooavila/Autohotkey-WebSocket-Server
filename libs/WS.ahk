@@ -27,23 +27,6 @@ sec_websocket_accept(key){
     return b64
 }
 
-class WSClient{
-    ; needs a function to send bigger data
-    ; needs way to decode bigger data frames
-    __New(ByRef client, protocol) {
-        this.client := client
-        this.protocol := protocol
-    }
-    
-    setData(data){
-        this.client.setData(data)
-    }
-    
-    TrySend(){
-        this.client.TrySend()
-    }
-}
-
 class WSserver {
     __new(socket){
         this.clients := []
@@ -72,8 +55,7 @@ class WSserver {
     
     handler(ByRef client, ByRef bData = 0, bDataLength = 0) {
         ; New Client or Old
-        if(this.clients[client.socket]) {
-            client := this.clients[client.socket]
+        if(client.WSprotocol) {
             response := False
             
             if(client.multiFrameMessage) {
@@ -89,7 +71,7 @@ class WSserver {
                 ; the onclose event is not firing in the client
                 if(request.length){
                     closeCode := request.getMessage()
-                    response := new WSResponse(0x8, closeCode, request.length)
+                response := new WSResponse(0x8, closeCode, request.length)
                 }else{
                     response := new WSResponse(0x8)
                 }
@@ -100,7 +82,7 @@ class WSserver {
             
             }else {
                 if(request.fin) {
-                    protocol := this.protocols[client.protocol]                
+                    protocol := this.protocols[client.WSprotocol]                
                     response := new WSResponse()
                     protocol.Call(request, response, client)
                 
@@ -148,7 +130,7 @@ class WSserver {
                 if(this.isValidProtocol(protocol)){
                     ; create handshake response
                     response := handshake(request, response)
-                this.registerClient(client, protocol)
+                client.WSprotocol := protocol
                 }else{
                     response.status := "501 Not Implemented"
                 }
