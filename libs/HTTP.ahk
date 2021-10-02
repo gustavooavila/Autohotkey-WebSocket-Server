@@ -53,9 +53,9 @@ class HTTPRouter{
 
 class HttpServer
 {
-    __new(socket){
+    __new(port){
         this.Router := new HTTPRouter()
-        this.socket := socket
+        this.port := port
     }
     
     static servers := {}
@@ -107,7 +107,7 @@ class HttpServer
         }
         if (client.TrySend()) {
             if (!request.IsMultipart() || request.done) {
-                client.Close()
+                client.Disconnect()
             }
         }    
         

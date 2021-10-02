@@ -45,16 +45,16 @@ class WSClient{
 }
 
 class WSserver {
-    __new(socket){
+    __new(port){
         this.clients := []
-        this.socket := socket        
+        this.port := port        
         this.protocols := []        
     }
     
     registerClient(ByRef client, protocol := "default"){
         console.log("new Websocket Client")
-        console.log("Socket: ", client.socket, " protocol: ", protocol)
-        socket := client.socket
+        console.log("Socket: ", client.Socket, " protocol: ", protocol)
+        socket := client.Socket
         this.clients[socket] := new WSClient(client, protocol)
     }
     
@@ -72,8 +72,8 @@ class WSserver {
     
     handler(ByRef client, ByRef bData = 0, bDataLength = 0) {
         ; New Client or Old
-        if(this.clients[client.socket]) {
-            client := this.clients[client.socket]
+        if(this.clients[client.Socket]) {
+            client := this.clients[client.Socket]
             response := False
             
             if(client.multiFrameMessage) {
@@ -89,7 +89,7 @@ class WSserver {
                 ; the onclose event is not firing in the client
                 if(request.length){
                     closeCode := request.getMessage()
-                    response := new WSResponse(0x8, closeCode, request.length)
+                response := new WSResponse(0x8, closeCode, request.length)
                 }else{
                     response := new WSResponse(0x8)
                 }
@@ -109,7 +109,7 @@ class WSserver {
                 }
             }
             if(response){
-                client.setData(response.encode())
+                client.SetData(response.encode())
                 client.TrySend()
             }
             return
@@ -139,6 +139,7 @@ class WSserver {
         } else {
             client.request := request
         }
+        
         if (request.done || request.IsMultipart()) {
             response := new HttpResponse()
             ; validate some of the headers
@@ -166,9 +167,11 @@ class WSserver {
         }
         ; send HTTP response
         if (client.TrySend()) {
-            if(this.clients[client.socket]) return
+            console.log("is it getting here? 1")
+            if(this.clients[client.Socket]) return
+            console.log("is it getting here?")
             if (!request.IsMultipart() || request.done) {
-                client.Close()
+                client.Disconnect()
             }
         }
         
