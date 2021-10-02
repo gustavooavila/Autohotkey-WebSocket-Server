@@ -27,23 +27,6 @@ sec_websocket_accept(key){
     return b64
 }
 
-class WSClient{
-    ; needs a function to send bigger data
-    ; needs way to decode bigger data frames
-    __New(ByRef client, protocol) {
-        this.client := client
-        this.protocol := protocol
-    }
-    
-    setData(data){
-        this.client.setData(data)
-    }
-    
-    TrySend(){
-        this.client.TrySend()
-    }
-}
-
 class WSserver {
     __new(port){
         this.clients := []
@@ -69,52 +52,49 @@ class WSserver {
     broadcast(data, protocol := "") {
         return 
     }
-    
-    handler(ByRef client, ByRef bData = 0, bDataLength = 0) {
-        ; New Client or Old
-        if(this.clients[client.Socket]) {
-            client := this.clients[client.Socket]
-            response := False
-            
-            if(client.multiFrameMessage) {
-                client.multiFrameMessage.decode(bData, bDataLength)
-                request := client.multiFrameMessage
-            
-            } else {
-                request := new WSRequest(bData, bDataLength)
-            }
-            
-            if(request.datatype == "close") {
-                ; the protocol for closing must be wrong,
-                ; the onclose event is not firing in the client
-                if(request.length){
-                    closeCode := request.getMessage()
-                response := new WSResponse(0x8, closeCode, request.length)
-                }else{
-                    response := new WSResponse(0x8)
-                }
-            
-            } else if(request.datatype == "ping") {
-                ; don't know how to test this :/
-                response := new WSResponse(0xA, request.getMessage(), request.length)
-            
-            }else {
-                if(request.fin) {
-                    protocol := this.protocols[client.protocol]                
-                    response := new WSResponse()
-                    protocol.Call(request, response, client)
-                
-                } else {
-                    client.multiFrameMessage := request
-                }
-            }
-            if(response){
-                client.SetData(response.encode())
-                client.TrySend()
-            }
-            return
+
+    handleWS(ByRef client, ByRef bData = 0, bDataLength = 0){
+        response := False
+        
+        if(client.multiFrameMessage) {
+            client.multiFrameMessage.decode(bData, bDataLength)
+            request := client.multiFrameMessage
+        
+        } else {
+            request := new WSRequest(bData, bDataLength)
         }
         
+        if(request.datatype == "close") {
+            if(request.length){
+                closeCode := request.getMessage()
+            response := new WSResponse(0x8, closeCode, request.length)
+            }else{
+                response := new WSResponse(0x8)
+            }
+        
+        } else if(request.datatype == "ping") {
+            ; don't know how to test this :/
+            response := new WSResponse(0xA, request.getMessage(), request.length)
+        
+        }else {
+            if(request.fin) {
+                protocol := this.protocols[client.WSprotocol]                
+                response := new WSResponse()
+                protocol.Call(request, response, client)
+            } else {
+                client.multiFrameMessage := request
+            }
+        }
+        if(response){
+            client.setData(response.encode())
+            if (client.TrySend()) {
+                if(request.datatype == "close") {
+                    client.Close()
+                }
+            }
+        }
+    }
+    handleHTTP(ByRef client, ByRef bData = 0, bDataLength = 0){      
         text := StrGet(&bData, "UTF-8")
         
         ; New request or old?
@@ -149,7 +129,7 @@ class WSserver {
                 if(this.isValidProtocol(protocol)){
                     ; create handshake response
                     response := handshake(request, response)
-                this.registerClient(client, protocol)
+                client.WSprotocol := protocol
                 }else{
                     response.status := "501 Not Implemented"
                 }
@@ -174,6 +154,15 @@ class WSserver {
                 client.Disconnect()
             }
         }
-        
+    }
+    handler(ByRef client, ByRef bData = 0, bDataLength = 0) {
+        ; New Client or Old
+        if(client.WSprotocol)
+        {
+            this.handleWS( client, bData, bDataLength)
+        }
+        else{
+            this.handleHTTP( client, bData, bDataLength)
+        }
     }
 }        
