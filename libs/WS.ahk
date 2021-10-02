@@ -89,7 +89,7 @@ class WSserver {
             client.setData(response.encode())
             if (client.TrySend()) {
                 if(request.datatype == "close") {
-                    client.Close()
+                    client.Disconnect()
                 }
             }
         }
@@ -147,9 +147,7 @@ class WSserver {
         }
         ; send HTTP response
         if (client.TrySend()) {
-            console.log("is it getting here? 1")
             if(this.clients[client.Socket]) return
-            console.log("is it getting here?")
             if (!request.IsMultipart() || request.done) {
                 client.Disconnect()
             }
