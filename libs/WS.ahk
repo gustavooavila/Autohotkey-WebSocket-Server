@@ -28,9 +28,9 @@ sec_websocket_accept(key){
 }
 
 class WSserver {
-    __new(socket){
+    __new(port){
         this.clients := []
-        this.socket := socket        
+        this.port := port        
         this.protocols := []        
     }
     

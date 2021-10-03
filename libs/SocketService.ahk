@@ -61,15 +61,15 @@ class SocketServiceHandler
     
     RegisterService(service)
     {
-        console.log("service registered:",service.socket)
-        SocketServiceHandler.services[service.socket] := service
+        console.log("service registered: ",service.port)
+        SocketServiceHandler.services[service.port] := service
     }
     
     StartServices()
     {
-        For socket, service in SocketServiceHandler.services
+        For port, service in SocketServiceHandler.services
         {    
-            If (i := AHKsock_Listen(socket, "SocketHandler")) 
+            If (i := AHKsock_Listen(port, "SocketHandler")) 
             {
                 console.log("AHKsock_Listen() failed with return value = ", i," and ErrorLevel = ", ErrorLevel)
                 break

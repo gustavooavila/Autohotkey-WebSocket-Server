@@ -53,9 +53,9 @@ class HTTPRouter{
 
 class HttpServer
 {
-    __new(socket){
+    __new(port){
         this.Router := new HTTPRouter()
-        this.socket := socket
+        this.port := port
     }
     
     static servers := {}
