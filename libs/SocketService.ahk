@@ -1,4 +1,10 @@
 #include AHKsock.ahk
+#include EventEmitter.ahk
+
+isFunc(param) {
+	fn := numGet(&(_ := Func("InStr").bind()), "Ptr")
+	return (Func(param) || (isObject(param) && (numGet(&param, "Ptr") = fn)))
+}
 
 class SocketClient
 {
@@ -55,45 +61,39 @@ class SocketClient
 }
 
 
-class SocketServiceHandler
+class Socket extends EventEmitter
 {
-    static services := {}
-    
-    RegisterService(service)
+    __new(port)
     {
-        console.log("service registered:",service.socket)
-        SocketServiceHandler.services[service.socket] := service
-    }
-    
-    StartServices()
-    {
-        For socket, service in SocketServiceHandler.services
-        {    
-            If (i := AHKsock_Listen(socket, "SocketHandler")) 
-            {
-                console.log("AHKsock_Listen() failed with return value = ", i," and ErrorLevel = ", ErrorLevel)
-                break
-            }
+        this.clients := {}
+        this.port := port
+        
+        If (i := AHKsock_Listen(port, ObjBindMethod(this, "eventHandler")))
+        {
+            console.log("AHKsock_Listen() failed with return value = ", i," and ErrorLevel = ", ErrorLevel)
         }
     }
-}
-
-SocketHandler(sEvent, iSocket = 0, sName = 0, sAddr = 0, sPort = 0, ByRef bData = 0, bDataLength = 0) {
-    static clients := {}
     
-    if (!clients[iSocket]) {
-        clients[iSocket] := new SocketClient(iSocket)
-        AHKsock_SockOpt(iSocket, "SO_KEEPALIVE", true)
+    eventHandler(sEvent, iSocket = 0, sName = 0, sAddr = 0, sPort = 0, ByRef bData = 0, bDataLength = 0)
+    {
+        if (!this.clients[iSocket])
+        {
+            this.clients[iSocket] := new SocketClient(iSocket)
+            AHKsock_SockOpt(iSocket, "SO_KEEPALIVE", true)
+        }
+        client := this.clients[iSocket]
+        if (sEvent == "DISCONNECTED")
+        {
+            this.emit("DISCONNECTED", {iSocket: iSocket})
+            client.request := false
+            this.clients[iSocket] := false
+        } else if (sEvent == "SEND")
+        {
+            client.TrySend()
+        } else if (sEvent == "RECEIVED")
+        {
+            this.emit("RECEIVED", {client: client, bData: bData, bDataLength: bDataLength})
+        }
+        
     }
-    client := clients[iSocket]
-    if (sEvent == "DISCONNECTED") {
-        client.request := false
-        clients[iSocket] := false
-    
-    } else if (sEvent == "SEND") {
-        client.TrySend()
-    } else if (sEvent == "RECEIVED") {
-        service := SocketServiceHandler.services[sPort]
-        service.handler(client, bData, bDataLength)
-    }
-}
+}        

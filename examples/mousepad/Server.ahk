@@ -6,15 +6,13 @@ global Console := new CConsole()
 Console.hotkey := "^+c"  ; to show the console
 Console.show()
 
-SocketManager := new SocketServiceHandler()
+Server := new Socket(8000)
 
-http := new HttpServer(8000)
+http := new HttpServer(Server)
 
-http.StaticFolder("static")
 http.StaticRoute("index.html")
 
-
-ws := new WSserver(8080)
+ws := new WSserver(http)
 ws.addProtocol("mouse", Func("WSmouse"))
 
 

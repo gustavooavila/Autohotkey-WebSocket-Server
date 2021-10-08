@@ -1,6 +1,7 @@
 #Include Buffer.ahk
 #Include URI.ahk
 #Include Mime.ahk
+#Include EventEmitter.ahk
 
 class StaticRoute{
     __New(path){
@@ -38,27 +39,45 @@ class HTTPRouter{
         this.routes[path] := func
     }
     
-    Handle(ByRef request) {
+    Handle(ByRef request, ByRef client)
+    {
         response := new HttpResponse()
-        requested := this.routes[request.path]
-        if (requested){
-        requested.(request, response, this)
-        }else{
-            response.status := 404
+        response.status := 404
+        route := this.routes[request.path]
+        if (route)
+        {
+            route.(request, response, this)
+        } else
+        {
+            if(request.headers["Upgrade"])
+            {
+                this.server.emit("upgrade", {request: request, response: response, client: client, server: this})
+            }else
+            {
+                this.server.emit("request", {request: request, response: response, client: client, server: this})
+            }
         }
         
         return response
     }
 }
 
-class HttpServer
+class HttpServer extends EventEmitter
 {
-    __new(socket){
-        this.Router := new HTTPRouter()
-        this.socket := socket
+    __new(ByRef port){
+        
+        if(port.__Class == "Socket")
+        {
+            this.socket := port
+        }else
+        {
+            this.socket := new Socket(port)   
+        }
+        
+        this.Router := new HTTPRouter(this)
+        
+        this.socket.on("RECEIVED", objBindMethod(this, "handler"))
     }
-    
-    static servers := {}
     
     StaticRoute(path){
         this.Router.StaticRoute(path)
@@ -72,8 +91,13 @@ class HttpServer
         this.Router.DinamicRoute(path, func)
     }
     
-    handler(ByRef client, ByRef bData = 0, bDataLength = 0) {
+    handler(ByRef e) {
+        client := e.data["client"]
+        bData := e.data["bData"]
+        bDataLength := e.data["bDataLength"]
+        
         text := StrGet(&bData, "UTF-8")
+        
         ; New request or old?
         if (client.request) {
             ; Get data and append it to the existing request body
@@ -86,7 +110,7 @@ class HttpServer
             
             length := request.headers["Content-Length"]
             request.bytesLeft := length + 0
-                        
+            
             if (request.body) {
                 request.bytesLeft -= StrLen(request.body)
             }
@@ -98,14 +122,14 @@ class HttpServer
         }
         
         if (request.done || request.IsMultipart()) {
-            response := this.Router.Handle(request)
+            response := this.Router.Handle(request, client)
             if (response.status) {
                 console.log("new HTTP Request")
                 console.log("Route: ", request.path)
                 client.SetData(response.Generate())
             }
         }
-        if (client.TrySend()) {
+        if (client.TrySend() && !client.preventClose) {
             if (!request.IsMultipart() || request.done) {
                 client.Close()
             }
