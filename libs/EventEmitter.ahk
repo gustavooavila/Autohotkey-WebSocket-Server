@@ -1,3 +1,17 @@
+class Event
+{
+    __new(ByRef emitter, ByRef data)
+    {
+        this.target := emitter
+        this.data := data
+        this.propagate := True
+    }
+    stopPropagation()
+    {
+        this.propagate := False
+    }
+}
+
 class EventEmitter
 {
     __new()
@@ -5,21 +19,21 @@ class EventEmitter
         this.events := {}
     }
     
-    _addListener(event, ByRef listener, atStart := 0, once := 0){
-        if(!this.events[event])
+    _addListener(eventName, ByRef listener, atStart := 0, once := 0)
+    {
+        if(!this.events[eventName])
         {
-            this.events[event] := []
+            this.events[eventName] := []
         }
         
         if(atStart)
         {
-            this.events[event].InsertAt(1, {listener: listener, once: once})
+            this.events[eventName].InsertAt(1, {listener: listener, once: once})
         }
         else
         {
-            this.events[event].append({listener: listener, once: once})
+            this.events[eventName].Push({listener: listener, once: once})
         }
-        
         return this
     }
     
@@ -45,19 +59,25 @@ class EventEmitter
         }
     }
     
-    emit(eventName, args*)
+    emit(eventName,ByRef data)
     {
         if(this.events[eventName])
         {
             iListeners := this.events[eventName].Length()
             if(iListeners)
             {
+                e := new Event(this, data)
                 For i, eventListener in this.events[eventName]
                 {
-                    eventListener.listener(args*)
+                    
+                    eventListener.listener.Call(e)
                     if(eventListener.once)
                     {
                         this.events[eventName].RemoveAt(i)
+                    }
+                    if(!e.propagate)
+                    {
+                        break
                     }
                 }
             }
