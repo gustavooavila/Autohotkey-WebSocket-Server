@@ -6,19 +6,16 @@ global Console := new CConsole()
 Console.hotkey := "^+c"  ; to show the console
 Console.show()
 
-SocketManager := new SocketServiceHandler()
+Server := new Socket(8000)
 
-http := new HttpServer(8000)
+http := new HttpServer(Server)
 
 http.StaticRoute("index.html")
 
-ws := new WSserver(8080)
+ws := new WSserver(http)
+
 ws.addProtocol("echo", Func("WSecho"))
 
-SocketManager.RegisterService(http)
-SocketManager.RegisterService(ws)
-
-SocketManager.StartServices()
 
 return
 

@@ -1,5 +1,5 @@
 (function(){
-    let socket = new WebSocket(`ws://${window.location.hostname}:8080`, 'mouse');
+    let socket = new WebSocket(`ws://${window.location.hostname}:8000`, 'mouse');
     
     class Mouse {
         constructor(){
